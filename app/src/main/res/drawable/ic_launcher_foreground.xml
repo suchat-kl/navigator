@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- เส้นทางคดเคี้ยวจากตำแหน่งปัจจุบันไปจุดหมาย (อยู่ในวงกลมปลอดภัยรัศมี 33 รอบจุด 54,54) -->
+    <path android:strokeColor="#CFEFE4" android:strokeWidth="5" android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M38,66 C40,56 52,60 54,52 C56,44 62,46 66,44" />
+    <!-- หมุดจุดหมาย -->
+    <path android:fillColor="#FFC83D"
+        android:pathData="M68,24 C63,24 59,28 59,33 C59,40 68,47 68,47 C68,47 77,40 77,33 C77,28 73,24 68,24 Z" />
+    <path android:fillColor="#0F7B5F"
+        android:pathData="M68,29.5 A3.5,3.5 0 1,1 67.99,29.5 Z" />
+    <!-- ลูกศรนำทาง (ตำแหน่งปัจจุบัน) -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M38,60 L47,79 L38,74 L29,79 Z" />
+</vector>
