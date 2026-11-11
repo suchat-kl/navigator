@@ -2,15 +2,21 @@ package th.banceum.suchat.navigator.route
 
 import org.json.JSONArray
 import org.json.JSONObject
+import th.banceum.suchat.navigator.geo.Geo
 import th.banceum.suchat.navigator.geo.LatLon
 
-/** อ่านผล Nominatim (format=jsonv2) เป็น Place รูปแบบเดียวกับ ORS */
+/** อ่านผล Nominatim (format=jsonv2, addressdetails=1) เป็น Place รูปแบบเดียวกับ ORS */
 object NominatimParser {
 
-    /** ผล /search: อาร์เรย์ของสถานที่ */
+    /** ผล /search: อาร์เรย์ของสถานที่ — ชื่อเดียวกันห่างกันไม่เกิน 300 ม. (เช่น อาคารหลายหลังในศูนย์ราชการ) เหลือรายการเดียว */
     fun places(json: String): List<Place> {
         val arr = JSONArray(json)
-        return List(arr.length()) { i -> place(arr.getJSONObject(i)) }.filterNotNull()
+        val out = ArrayList<Place>()
+        for (i in 0 until arr.length()) {
+            val p = place(arr.getJSONObject(i)) ?: continue
+            if (out.none { it.name == p.name && Geo.distance(it.pos, p.pos) < 300 }) out += p
+        }
+        return out
     }
 
     /** ผล /reverse: วัตถุเดียว หรือ {"error": ...} เมื่อไม่พบ */
@@ -24,14 +30,26 @@ object NominatimParser {
         val lon = o.optString("lon").toDoubleOrNull() ?: return null
         val display = o.optString("display_name")
         val name = o.optString("name").ifBlank { display.substringBefore(",").trim() }
-        return Place(name = name, detail = detailOf(display, name), pos = LatLon(lat, lon))
+        val address = o.optJSONObject("address")
+        val detail = address?.let { detailOf(it, name) }?.takeIf { it.isNotEmpty() } ?: detailOf(display, name)
+        return Place(name = name, detail = detail, pos = LatLon(lat, lon))
     }
 
     /**
-     * รายละเอียดใต้ชื่อ: ตัดชื่อซ้ำ ชื่อประเทศ และรหัสไปรษณีย์ออก เหลือไม่เกิน 3 ระดับแรก
-     * "เซ็นทรัลชิดลม, ถนนเพลินจิต, ลุมพินี, เขตปทุมวัน, กรุงเทพมหานคร, 10330, ประเทศไทย"
-     *   → "ถนนเพลินจิต, ลุมพินี, เขตปทุมวัน"
+     * รายละเอียดจากที่อยู่แยกส่วน (addressdetails=1): ถนน, แขวง/ตำบล, เขต/อำเภอ, จังหวัด — ไม่เกิน 3 ระดับ
+     * ไม่ใช้บ้านเลขที่ ชื่อชุมชน รหัสไปรษณีย์ และประเทศ
      */
+    fun detailOf(address: JSONObject, name: String): String {
+        fun pick(vararg keys: String) = keys.firstNotNullOfOrNull { k -> address.optString(k).takeIf { it.isNotBlank() } }
+        return listOfNotNull(
+            pick("road"),
+            pick("quarter", "city_district", "village", "hamlet"),
+            pick("suburb", "county", "municipality", "town"),
+            pick("province", "city", "state"),   // ต่างจังหวัดใช้ชื่อจังหวัด กรุงเทพฯ ไม่มี province ใช้ city
+        ).distinct().filter { it != name }.take(3).joinToString(", ")
+    }
+
+    /** สำรองเมื่อไม่มีที่อยู่แยกส่วน: ตัดชื่อซ้ำ ประเทศ รหัสไปรษณีย์ เหลือไม่เกิน 3 ระดับ */
     fun detailOf(display: String, name: String): String = display.split(",")
         .map { it.trim() }
         .filterIndexed { i, s -> !(i == 0 && s == name) }

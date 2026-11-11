@@ -76,4 +76,20 @@ class NominatimTest {
         org.junit.Assert.assertEquals("ซอยสมประสงค์ 5", r!!.name)
         org.junit.Assert.assertEquals("ถนนเพชรบุรี, ราชเทวี", r.detail)
     }
+
+    @org.junit.Test fun addressDetailsAndDedupe() {
+        // ผลจริงจากเซิร์ฟเวอร์กรม (ตัดบางช่อง): บ้านเลขที่/ชุมชน/รหัสไปรษณีย์ไม่แสดง, ชื่อซ้ำใกล้กันเหลือรายการเดียว
+        val a = """{"house_number":"999/9","road":"ถนนราชดำริ","neighbourhood":"ชุมชน","quarter":"แขวงปทุมวัน",
+            "suburb":"เขตปทุมวัน","city":"กรุงเทพมหานคร","postcode":"10330","country":"ประเทศไทย"}"""
+        val json = """[{"lat":"13.7466","lon":"100.5393","name":"เซ็นทรัลเวิลด์","display_name":"x","address":$a},
+            {"lat":"13.7468","lon":"100.5395","name":"เซ็นทรัลเวิลด์","display_name":"x","address":$a},
+            {"lat":"13.8","lon":"100.6","name":"เซ็นทรัลเวิลด์","display_name":"x","address":$a}]"""
+        val p = th.banceum.suchat.navigator.route.NominatimParser.places(json)
+        org.junit.Assert.assertEquals(2, p.size)
+        org.junit.Assert.assertEquals("ถนนราชดำริ, แขวงปทุมวัน, เขตปทุมวัน", p[0].detail)
+        val khonKaen = org.json.JSONObject("""{"road":"ซอยมิตรภาพ 12","city_district":"ตำบลในเมือง","city":"เทศบาลนครขอนแก่น",
+            "county":"อำเภอเมืองขอนแก่น","province":"จังหวัดขอนแก่น"}""")
+        org.junit.Assert.assertEquals("ตำบลในเมือง, อำเภอเมืองขอนแก่น, จังหวัดขอนแก่น",
+            th.banceum.suchat.navigator.route.NominatimParser.detailOf(khonKaen, "ซอยมิตรภาพ 12"))
+    }
 }

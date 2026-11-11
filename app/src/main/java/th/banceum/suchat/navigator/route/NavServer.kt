@@ -34,7 +34,7 @@ object NavServer {
 
     suspend fun search(text: String, near: LatLon?): List<Place> {
         val q = buildString {
-            append("$base/search?format=jsonv2&limit=10&countrycodes=th&accept-language=th&q=")
+            append("$base/search?format=jsonv2&addressdetails=1&limit=10&countrycodes=th&accept-language=th&q=")
             append(URLEncoder.encode(text, "UTF-8"))
             // ให้ผลใกล้ตำแหน่งปัจจุบันขึ้นก่อน (ไม่จำกัดเฉพาะในกรอบ)
             if (near != null) append(String.format(Locale.ROOT, "&viewbox=%.4f,%.4f,%.4f,%.4f",
@@ -44,7 +44,7 @@ object NavServer {
     }
 
     suspend fun reverse(p: LatLon): Place? = NominatimParser.reverse(get(
-        String.format(Locale.ROOT, "%s/reverse?format=jsonv2&zoom=18&accept-language=th&lat=%.6f&lon=%.6f", base, p.lat, p.lon),
+        String.format(Locale.ROOT, "%s/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=th&lat=%.6f&lon=%.6f", base, p.lat, p.lon),
         "ระบุชื่อสถานที่",
     ))
 
