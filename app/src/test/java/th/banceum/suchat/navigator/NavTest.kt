@@ -52,6 +52,17 @@ class NavTest {
             ThaiInstructions.spoken(route.steps[1], Geo.spokenDistance(300.0)))
     }
 
+    @Test fun roadNamesAndStraight() {
+        assertEquals("ถนนสิงหวัฒน์", ThaiInstructions.roadName("ถนนสิงหวัฒน์, 12"))
+        assertEquals("ทางหลวงหมายเลข 3256", ThaiInstructions.roadName("3256"))
+        assertNull(ThaiInstructions.roadName("-"))
+        // เส้นทางที่จุดเปลี่ยนถัดไปเป็น "ตรงไป" ไม่พูด
+        val straight = route.copy(steps = route.steps.mapIndexed { i, s -> if (i == 1) s.copy(type = ThaiInstructions.STRAIGHT) else s })
+        val t = NavTracker(straight)
+        assertNull(t.update(LatLon(13.705, 100.5)).speech)
+        assertFalse(t.intro().contains("ตรงไป"))
+    }
+
     @Test fun formatting() {
         assertEquals("350 เมตร", Geo.formatDistance(347.0))
         assertEquals("1.2 กม.", Geo.formatDistance(1234.0))

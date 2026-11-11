@@ -51,6 +51,7 @@ const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
 
 private const val SRC_ROUTE = "route"
 private const val SRC_DEST = "dest"
+private const val SRC_ALERTS = "alerts"
 
 /**
  * แผนที่ MapLibre ใน Compose
@@ -65,6 +66,8 @@ fun MapScreen(
     location: Location?,
     route: Route?,
     destination: LatLon?,
+    /** GeoJSON จุดเตือน (null = ไม่แสดง) */
+    alertsJson: String?,
     navigating: Boolean,
     follow: Boolean,
     recenter: Int,
@@ -191,6 +194,12 @@ fun MapScreen(
     }
 
     // วาดเส้นทาง + จุดหมาย และจัดกล้องให้เห็นทั้งเส้น (ก่อนเริ่มนำทาง)
+    // จุดเตือน (ด่านชั่ง ด่านเก็บเงิน กล้อง)
+    LaunchedEffect(style, alertsJson) {
+        val s = style ?: return@LaunchedEffect
+        s.getSourceAs<GeoJsonSource>(SRC_ALERTS)?.setGeoJson(alertsJson ?: """{"type":"FeatureCollection","features":[]}""")
+    }
+
     LaunchedEffect(style, route, destination) {
         val m = map ?: return@LaunchedEffect
         val s = style ?: return@LaunchedEffect
@@ -273,4 +282,21 @@ private fun addRouteLayers(s: Style) {
         s.addLayer(line)
     }
     s.addLayer(dest)
+    // จุดเตือน: ส้ม = ด่านเก็บเงิน, ม่วง = ด่านชั่งน้ำหนัก, แดง = กล้องตรวจจับความเร็ว (แสดงตั้งแต่ซูม 10)
+    s.addSource(GeoJsonSource(SRC_ALERTS))
+    s.addLayerBelow(
+        CircleLayer("alert-points", SRC_ALERTS).withProperties(
+            PropertyFactory.circleRadius(6f),
+            PropertyFactory.circleColor(
+                Expression.match(
+                    Expression.get("kind"), Expression.color(Color.parseColor("#F57C00")),
+                    Expression.stop("weighbridge", Expression.color(Color.parseColor("#7B1FA2"))),
+                    Expression.stop("speed_camera", Expression.color(Color.parseColor("#D32F2F"))),
+                ),
+            ),
+            PropertyFactory.circleStrokeColor(Color.WHITE),
+            PropertyFactory.circleStrokeWidth(2f),
+        ).apply { minZoom = 10f },
+        dest.id,
+    )
 }

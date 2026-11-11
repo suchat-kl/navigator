@@ -53,6 +53,16 @@ object ThaiInstructions {
     fun spoken(step: Step, distanceText: String?): String =
         if (distanceText == null) text(step) else "อีก $distanceText ${text(step)}"
 
-    /** ORS ใช้ "-" แทนถนนไม่มีชื่อ */
-    fun roadName(name: String): String? = name.trim().takeIf { it.isNotEmpty() && it != "-" }
+    /**
+     * ชื่อถนนสำหรับแสดง/พูด — ORS ใช้ "-" แทนถนนไม่มีชื่อ และต่อหมายเลขทางหลวงท้ายชื่อ เช่น "ถนนสิงหวัฒน์, 12"
+     * มีชื่อใช้ชื่อ ไม่มีชื่อใช้ "ทางหลวงหมายเลข 12"
+     */
+    fun roadName(name: String): String? {
+        val parts = name.split(",").map { it.trim() }.filter { it.isNotEmpty() && it != "-" }
+        if (parts.isEmpty()) return null
+        return parts.firstOrNull { !isRef(it) } ?: "ทางหลวงหมายเลข ${parts.first()}"
+    }
+
+    /** หมายเลขทางหลวง เช่น 12, 3256, 9 */
+    private fun isRef(s: String) = s.matches(Regex("[0-9]+[A-Za-z]?"))
 }

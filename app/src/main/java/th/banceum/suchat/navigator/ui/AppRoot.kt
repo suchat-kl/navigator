@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.TurnSlightRight
 import androidx.compose.material.icons.filled.UTurnRight
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -81,6 +82,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -98,6 +100,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import th.banceum.suchat.navigator.ads.Ads
+import th.banceum.suchat.navigator.alert.AlertKind
+import th.banceum.suchat.navigator.alert.UpcomingAlert
 import th.banceum.suchat.navigator.ads.BannerAd
 import th.banceum.suchat.navigator.geo.Geo
 import th.banceum.suchat.navigator.nav.LocationSource
@@ -194,6 +198,7 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
     Box(Modifier.fillMaxSize()) {
         MapScreen(
             initialCenter = vm.prefs.lastCenter,
+            alertsJson = vm.alertData?.json?.takeIf { vm.alertsOn },
             hasPermission = hasPermission,
             location = vm.location,
             route = vm.route,
@@ -215,7 +220,10 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
                 .statusBarsPadding().padding(12.dp),
         ) {
             val st = vm.nav
-            if (vm.navigating) InstructionBanner(vm.route, st, vm.routing)
+            if (vm.navigating) {
+                InstructionBanner(vm.route, st, vm.routing)
+                vm.nextAlert?.let { AlertChip(it) }
+            }
             else SearchBar(vm, onMenu = { screen = it })
         }
         if (!vm.navigating && vm.results.isNotEmpty()) {
@@ -503,6 +511,29 @@ private fun NavPanel(vm: MainViewModel, onStop: () -> Unit, onFollow: () -> Unit
                 Icon(if (vm.voiceOn) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff, if (vm.voiceOn) "ปิดเสียง" else "เปิดเสียง")
             }
             Button(onClick = onStop) { Text(if (st?.arrived == true) "เสร็จ" else "จบ") }
+        }
+    }
+}
+
+/** ป้ายจุดเตือนถัดไปใต้คำสั่งเลี้ยว เช่น "ด่านเก็บเงิน ดินแดง · 450 เมตร" */
+@Composable
+private fun AlertChip(a: UpcomingAlert) {
+    val text = when (a.point.kind) {
+        AlertKind.SPEED_CAMERA -> "กล้องตรวจจับความเร็ว" + (a.point.maxspeed?.let { " · จำกัด $it กม./ชม." } ?: "")
+        else -> a.point.kind.label + (a.point.name?.let { " $it" } ?: "")
+    }
+    Surface(
+        Modifier.padding(top = 8.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.tertiary,
+        contentColor = Color(0xFF3A2A00),
+        shadowElevation = 4.dp,
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Warning, null, Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("$text · ${Geo.formatDistance(a.distance)}", style = MaterialTheme.typography.titleSmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

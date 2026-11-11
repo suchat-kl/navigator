@@ -102,6 +102,17 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 }
                 HorizontalDivider()
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("เตือนจุดสำคัญ", style = MaterialTheme.typography.titleMedium)
+                        Text("ด่านชั่งน้ำหนัก ด่านเก็บเงิน กล้องตรวจจับความเร็ว บนเส้นทางที่นำทาง " +
+                            "(ข้อมูลจาก OpenStreetMap อาจไม่ครบหรือไม่เป็นปัจจุบัน)",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = vm.alertsOn, onCheckedChange = { vm.toggleAlerts() })
+                }
+                HorizontalDivider()
+
                 Text("วิธีใช้", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "1. ค้นหาชื่อสถานที่ หรือแตะค้างบนแผนที่เพื่อเลือกจุดหมาย\n" +
@@ -114,7 +125,7 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
 
                 Text("แหล่งข้อมูล", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "แผนที่ © ผู้ร่วมพัฒนา OpenStreetMap (ODbL) · แผนที่ฐาน OpenFreeMap / OpenMapTiles\n" +
+                    "แผนที่และจุดเตือน © ผู้ร่วมพัฒนา OpenStreetMap (ODbL) · แผนที่ฐาน OpenFreeMap / OpenMapTiles\n" +
                         "หาเส้นทางและค้นหาสถานที่ © openrouteservice.org by HeiGIT",
                     style = MaterialTheme.typography.bodyMedium,
                 )

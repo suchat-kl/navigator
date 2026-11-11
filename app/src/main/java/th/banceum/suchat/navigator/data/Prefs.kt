@@ -18,6 +18,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("voice", true)
         set(v) = sp.edit().putBoolean("voice", v).apply()
 
+    /** เตือนจุดสำคัญระหว่างนำทาง (ด่านชั่ง ด่านเก็บเงิน กล้องตรวจจับความเร็ว) */
+    var alerts: Boolean
+        get() = sp.getBoolean("alerts", true)
+        set(v) = sp.edit().putBoolean("alerts", v).apply()
+
     var profile: Profile
         get() = runCatching { Profile.valueOf(sp.getString("profile", null) ?: "") }.getOrDefault(Profile.CAR)
         set(v) = sp.edit().putString("profile", v.name).apply()

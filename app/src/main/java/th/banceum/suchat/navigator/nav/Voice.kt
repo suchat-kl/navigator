@@ -19,8 +19,11 @@ class Voice(context: Context) {
         return r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED
     }
 
-    fun say(text: String) {
-        if (ready && available == true) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nav")
+    /** [queue] = ต่อท้ายประโยคที่กำลังพูด (ใช้กับการเตือนจุดสำคัญ ไม่ให้ตัดคำสั่งเลี้ยว) */
+    fun say(text: String, queue: Boolean = false) {
+        if (ready && available == true) {
+            tts.speak(text, if (queue) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH, null, "nav")
+        }
     }
 
     fun stop() {

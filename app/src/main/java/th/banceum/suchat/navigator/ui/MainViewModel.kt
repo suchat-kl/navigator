@@ -2,6 +2,7 @@ package th.banceum.suchat.navigator.ui
 
 import android.app.Application
 import android.location.Location
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,6 +11,11 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.Locale
+import th.banceum.suchat.navigator.alert.AlertData
+import th.banceum.suchat.navigator.alert.AlertSource
+import th.banceum.suchat.navigator.alert.AlertTracker
+import th.banceum.suchat.navigator.alert.UpcomingAlert
+import th.banceum.suchat.navigator.BuildConfig
 import th.banceum.suchat.navigator.data.Prefs
 import th.banceum.suchat.navigator.geo.Geo
 import th.banceum.suchat.navigator.geo.LatLon
@@ -57,6 +63,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var saved by mutableStateOf(prefs.saved)
         private set
 
+    /** จุดเตือน (ด่านชั่ง ด่านเก็บเงิน กล้อง) โหลดครั้งเดียวตอนเปิดแอป */
+    var alertData by mutableStateOf<AlertData?>(null)
+        private set
+    var alertsOn by mutableStateOf(prefs.alerts)
+        private set
+    /** จุดเตือนถัดไปบนเส้นทาง (ภายใน 1 กม.) สำหรับป้ายบนจอ */
+    var nextAlert by mutableStateOf<UpcomingAlert?>(null)
+        private set
+    private var alertTracker: AlertTracker? = null
+
     /** ข้อความแจ้งผู้ใช้ครั้งเดียว (แสดงเป็น Snackbar แล้วล้าง) */
     var message by mutableStateOf<String?>(null)
 
@@ -67,6 +83,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var lastRerouteAt: LatLon? = null
 
     val orsReady get() = OrsClient.configured
+
+    init {
+        viewModelScope.launch { alertData = AlertSource.load(app) }
+    }
 
     // ---------- ค้นหา ----------
 
@@ -139,6 +159,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.clearAll()
         saved = emptyList()
         voiceOn = prefs.voice
+        alertsOn = prefs.alerts
         profile = prefs.profile
         message = "ล้างข้อมูลในเครื่องแล้ว"
     }
@@ -178,6 +199,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun startNav() {
         val r = route ?: return
         tracker = NavTracker(r)
+        alertTracker = newAlertTracker(r)
         lastRerouteAt = null
         navigating = true
         nav = null
@@ -189,6 +211,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         navigating = false
         nav = null
         tracker = null
+        alertTracker = null
+        nextAlert = null
         voice.stop()
     }
 
@@ -206,6 +230,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val u = t.update(LatLon(loc.latitude, loc.longitude), loc.accuracy)
         nav = u.state
         u.speech?.let { speak(it) }
+        // จุดเตือนบนเส้นทาง (ไม่เตือนตอนออกนอกเส้นทาง เพราะระยะตามแนวทางไม่มีความหมาย)
+        val at = alertTracker
+        if (at != null && !u.state.offRoute && !u.state.arrived) {
+            at.speech(u.state.along)?.let { speak(it, queue = true) }
+            nextAlert = at.upcoming(u.state.along)
+        } else {
+            nextAlert = null
+        }
         val now = System.currentTimeMillis()
         val p = LatLon(loc.latitude, loc.longitude)
         val moved = lastRerouteAt?.let { Geo.distance(it, p) > 100 } ?: true
@@ -227,6 +259,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 if (!navigating) return@launch
                 route = r
                 tracker = NavTracker(r)
+                alertTracker = newAlertTracker(r)
             } catch (e: OrsException) {
                 message = e.message
             } finally {
@@ -235,8 +268,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun speak(text: String) {
-        if (voiceOn) voice.say(text)
+    fun toggleAlerts() {
+        alertsOn = !alertsOn
+        prefs.alerts = alertsOn
+        val r = route
+        alertTracker = if (navigating && r != null) newAlertTracker(r) else null
+        if (!alertsOn) nextAlert = null
+    }
+
+    private fun newAlertTracker(r: Route): AlertTracker? {
+        val points = alertData?.points ?: return null
+        return if (alertsOn) AlertTracker(r, points) else null
+    }
+
+    private fun speak(text: String, queue: Boolean = false) {
+        // บันทึกประโยคลง log ในรุ่น debug ใช้ตรวจบน emulator ที่ไม่มีเสียงไทย (adb logcat -s NavVoice)
+        if (BuildConfig.DEBUG) Log.d("NavVoice", text)
+        if (voiceOn) voice.say(text, queue)
     }
 
     override fun onCleared() {

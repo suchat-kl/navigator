@@ -21,6 +21,8 @@ data class NavState(
     val remainingTime: Double,
     val offRoute: Boolean,
     val arrived: Boolean,
+    /** ระยะที่เดินทางมาแล้วตามแนวเส้นทาง (เมตร) ใช้หาจุดเตือนข้างหน้า */
+    val along: Double = 0.0,
 )
 
 /** ผลของการอัปเดตตำแหน่งหนึ่งครั้ง */
@@ -62,7 +64,8 @@ class NavTracker(val route: Route) {
         val head = "เริ่มนำทาง ระยะทาง ${Geo.spokenDistance(route.distance)}"
         if (first == null) return head
         val road = ThaiInstructions.roadName(first.name)?.let { " ไปตาม $it" } ?: ""
-        val then = next?.let { " แล้ว${ThaiInstructions.spoken(it, Geo.spokenDistance(first.distance))}" } ?: ""
+        val then = next?.takeIf { it.type != ThaiInstructions.STRAIGHT }
+            ?.let { " แล้ว${ThaiInstructions.spoken(it, Geo.spokenDistance(first.distance))}" } ?: ""
         return "$head ออกเดินทาง$road$then"
     }
 
@@ -102,11 +105,13 @@ class NavTracker(val route: Route) {
         val toNext = if (next == null) total - along else (cum[next.start.coerceIn(0, cum.size - 1)] - along).coerceAtLeast(0.0)
         val remaining = (total - along).coerceAtLeast(0.0)
         val time = if (route.distance > 0) route.duration * remaining / route.distance else 0.0
-        return NavState(idx, next, toNext, remaining, time, off, false)
+        return NavState(idx, next, toNext, remaining, time, off, false, along)
     }
 
     private fun speechFor(st: NavState): String? {
         val next = st.next ?: return null
+        // "ตรงไป" ไม่ต้องพูด (แสดงบนจอพอ) — พูดทุกช่วงถนนแล้วรบกวนผู้ขับ
+        if (next.type == ThaiInstructions.STRAIGHT) return null
         val nextIdx = st.stepIndex + 1
         // ระยะเตือนที่เล็กที่สุดที่ยังครอบระยะปัจจุบัน
         val t = thresholds.lastOrNull { st.toNext <= it } ?: return null

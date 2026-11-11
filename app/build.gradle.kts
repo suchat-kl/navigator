@@ -48,6 +48,8 @@ android {
         buildConfigField("String", "ADMOB_BANNER_ID", "\"${testAdmob.getValue("banner")}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"${testAdmob.getValue("interstitial")}\"")
         buildConfigField("String", "ORS_API_KEY", "\"$orsApiKey\"")
+        // URL ไฟล์ GeoJSON จุดเตือน (ด่านชั่ง ด่านเก็บเงิน กล้อง) ของหน่วยงาน เว้นว่าง = ใช้ข้อมูล OSM ที่มากับแอป
+        buildConfigField("String", "ALERTS_URL", "\"${localProps.getProperty("alertsUrl").orEmpty()}\"")
     }
 
     signingConfigs {
