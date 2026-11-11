@@ -8,9 +8,9 @@
 |---|---|
 | บัญชี Google Play Console (บัญชีบุคคล ใช้บัญชีเดียวกับสมุดคะแนนนักเรียน) | มีแล้ว |
 | AdMob: แอป + Banner + Interstitial | สร้างแล้ว 10 พ.ย. 2569 ใส่ใน `gradle.properties` แล้ว (ดู `ตั้งค่า AdMob.md`) |
-| กุญแจ OpenRouteService ใน `local.properties` | **ผู้เผยแพร่ทำเอง** (ดู `ตั้งค่า OpenRouteService.md`) — ไม่มีกุญแจ = ค้นหา/หาเส้นทางไม่ได้ ห้ามอัปโหลดรุ่นนั้น |
-| หน้าเว็บนโยบายความเป็นส่วนตัว (ข้อ 4) | ร่างไว้ที่ `docs/play/privacy-policy.html` ต้องนำขึ้นเว็บ |
-| ไอคอน 512×512, ภาพหน้าปก 1024×500, ภาพหน้าจอมือถืออย่างน้อย 2 ภาพ | ยังไม่ได้ทำ (ข้อ 5) |
+| กุญแจ OpenRouteService ใน `local.properties` | ใส่แล้ว 11 พ.ย. 2569 (Basic Key ไม่หมดอายุ) ทดสอบค้นหา/หาเส้นทาง/นำทางบน emulator ผ่าน — เครื่อง build อื่นต้องใส่เองทุกเครื่อง (ดู `ตั้งค่า OpenRouteService.md`) |
+| หน้าเว็บนโยบายความเป็นส่วนตัว (ข้อ 3) | เผยแพร่แล้ว 10 พ.ย. 2569 |
+| ไอคอน 512×512, ภาพหน้าปก 1024×500, ภาพหน้าจอมือถือ 6 ภาพ | ทำแล้วที่ `docs/play/graphics/` (ข้อ 5) |
 
 ## 1. กุญแจเซ็นแอป (upload key)
 
@@ -67,12 +67,23 @@ GitHub Pages repo `suchat-kl/suchat-kl.github.io` (ต้นฉบับใน�
    - ระหว่างทดสอบแบบปิด แนะนำผู้ทดสอบให้ลองนำทางจริงอย่างน้อยหนึ่งเส้นทาง และรายงานคำแนะนำภาษาไทยที่อ่านแปลก
 6. **Production**: ตอบคำถามช่วงทดสอบแบบปิด แล้วส่งตรวจ
 
-## 5. ภาพหน้าร้าน (ยังไม่ได้ทำ)
+## 5. ภาพหน้าร้าน (ทำแล้ว 11 พ.ย. 2569)
 
-- ไอคอน 512×512 PNG จาก `app/src/main/res/drawable/ic_launcher_foreground.xml` (พื้น `#0F7B5F`)
-- Feature graphic 1024×500
-- ภาพหน้าจอมือถือ 2–8 ภาพ (แนะนำ: ผลค้นหา, เส้นทางพร้อมเวลา, ขั้นตอนการเลี้ยว, หน้าจอนำทาง, สถานที่ที่บันทึก)
-- ทำแบบเดียวกับสมุดคะแนนนักเรียน: เก็บภาพดิบจาก emulator ไว้ที่ `docs/play/graphics/raw/` แล้วดัดแปลง `student_score/docs/tools/store_graphics.py`
+อยู่ที่ `docs/play/graphics/` ใช้ใน Store listing ตามนี้
+
+| ช่องใน Play | ไฟล์ |
+|---|---|
+| App icon | `icon-512.png` |
+| Feature graphic | `feature-1024x500.png` |
+| Phone screenshots (เรียงตามเลข) | `phone-01.png` ถึง `phone-06.png` (1080×1920) |
+
+ภาพหน้าจอเรียง: นำทางด้วยเสียง → หาเส้นทาง → ค้นหา → ขั้นตอนการเลี้ยว → แผนที่ → สถานที่ที่บันทึก
+
+ทำใหม่ (เช่นหลังเปลี่ยนหน้าตาแอป)
+1. ติดตั้งรุ่น debug แล้วเปิดแบบไม่มีโฆษณา (โหมดนี้ใช้ได้เฉพาะรุ่น debug):
+   `adb shell am start -n th.banceum.suchat.navigator/.MainActivity --ez screenshots true`
+2. ตั้งพิกัด emulator `adb emu geo fix 100.5341 13.7465` (สยาม) ถ่ายภาพดิบ 1080×2400 ทับไฟล์ใน `docs/play/graphics/raw/` ชื่อเดิม
+3. `python docs/tools/store_graphics.py` (ต้องมี Pillow; ฟอนต์ Kanit/Sarabun อยู่ใน `docs/tools/fonts/` สัญญาอนุญาต OFL)
 
 ## 6. หลังเผยแพร่
 
