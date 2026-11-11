@@ -14,6 +14,11 @@ import th.banceum.suchat.navigator.route.Profile
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("navigator", Context.MODE_PRIVATE)
 
+    /** รับทราบข้อตกลงการใช้งาน (ไม่รับผิดชอบความผิดพลาด) แล้ว — ขึ้นตอนเปิดแอปครั้งแรก */
+    var disclaimerAccepted: Boolean
+        get() = sp.getBoolean("disclaimer_v1", false)
+        set(v) = sp.edit().putBoolean("disclaimer_v1", v).apply()
+
     var voice: Boolean
         get() = sp.getBoolean("voice", true)
         set(v) = sp.edit().putBoolean("voice", v).apply()

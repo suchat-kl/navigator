@@ -114,6 +114,10 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 }
                 HorizontalDivider()
 
+                Text("ข้อตกลงการใช้งาน", style = MaterialTheme.typography.titleMedium)
+                Text(DISCLAIMER, style = MaterialTheme.typography.bodyMedium)
+                HorizontalDivider()
+
                 Text("วิธีใช้", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "1. ค้นหาชื่อสถานที่ หรือแตะค้างบนแผนที่เพื่อเลือกจุดหมาย\n" +

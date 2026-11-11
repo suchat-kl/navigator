@@ -94,6 +94,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -115,6 +116,14 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 private enum class Screen { MAP, SAVED, ABOUT }
+
+/** ข้อความไม่รับผิดชอบ (ขึ้นตอนเปิดแอปครั้งแรก และอยู่ในหน้าเกี่ยวกับแอป) */
+const val DISCLAIMER =
+    "แอปนี้ช่วยแนะนำเส้นทางเพื่ออำนวยความสะดวกเท่านั้น ข้อมูลแผนที่ เส้นทาง ระยะทาง เวลา และจุดเตือน " +
+        "มาจากข้อมูลสาธารณะ (OpenStreetMap) อาจไม่ครบถ้วน ไม่ถูกต้อง หรือไม่เป็นปัจจุบัน\n\n" +
+        "ผู้พัฒนาและผู้ให้บริการข้อมูลไม่รับผิดชอบต่อความผิดพลาด ความเสียหาย หรืออุบัติเหตุใด ๆ ที่เกิดจากการใช้งานแอปนี้\n\n" +
+        "ผู้ใช้ต้องปฏิบัติตามกฎจราจร ป้ายสัญญาณ และสภาพถนนจริงเสมอ ไม่ใช้งานมือถือขณะขับขี่ " +
+        "และใช้วิจารณญาณของตนเองในการเดินทาง"
 
 @Composable
 fun AppRoot(vm: MainViewModel = viewModel()) {
@@ -268,6 +277,21 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
         }
 
         SnackbarHost(snackbar, Modifier.align(Alignment.Center).padding(16.dp))
+    }
+
+    // ข้อตกลงการใช้งาน: ขึ้นครั้งแรก ต้องกดรับทราบก่อนใช้ (ปิดด้วยปุ่มย้อนกลับ/แตะนอกกล่องไม่ได้)
+    var disclaimer by remember { mutableStateOf(!vm.prefs.disclaimerAccepted) }
+    if (disclaimer) {
+        AlertDialog(
+            onDismissRequest = {},
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+            title = { Text("ข้อตกลงการใช้งาน") },
+            text = { Text(DISCLAIMER, style = MaterialTheme.typography.bodyMedium) },
+            confirmButton = {
+                Button(onClick = { vm.prefs.disclaimerAccepted = true; disclaimer = false }) { Text("รับทราบและยอมรับ") }
+            },
+            dismissButton = { TextButton(onClick = { activity?.finish() }) { Text("ไม่ยอมรับ") } },
+        )
     }
 
     if (confirmStop) {

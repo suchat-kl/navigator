@@ -14,6 +14,9 @@ val localProps = Properties().apply {
 val orsApiKey: String = localProps.getProperty("orsApiKey")?.takeIf { it.isNotBlank() }
     ?: (findProperty("orsApiKey") as String?)?.takeIf { it.isNotBlank() }
     ?: System.getenv("ORS_API_KEY").orEmpty()
+// หาเส้นทาง + ค้นหาผ่านเซิร์ฟเวอร์กรมทั้งหมด = ไม่ใช้ ORS จึงไม่ฝังกุญแจ ORS ลงในแอป
+val orsKeyInApp = if (localProps.getProperty("navBaseUrl").orEmpty().isNotBlank() &&
+    localProps.getProperty("navSearch") == "true") "" else orsApiKey
 
 // รหัส AdMob: รุ่น debug/staging ใช้รหัสทดสอบของ Google เสมอ
 // รุ่น release ใช้รหัสจริงจาก gradle.properties (admobAppId, admobBannerId, admobInterstitialId)
@@ -40,14 +43,14 @@ android {
         applicationId = "th.banceum.suchat.navigator"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["admobAppId"] = testAdmob.getValue("app")
         buildConfigField("String", "ADMOB_BANNER_ID", "\"${testAdmob.getValue("banner")}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"${testAdmob.getValue("interstitial")}\"")
-        buildConfigField("String", "ORS_API_KEY", "\"$orsApiKey\"")
+        buildConfigField("String", "ORS_API_KEY", "\"$orsKeyInApp\"")
         // URL ไฟล์ GeoJSON จุดเตือน (ด่านชั่ง ด่านเก็บเงิน กล้อง) ของหน่วยงาน เว้นว่าง = ใช้ข้อมูล OSM ที่มากับแอป
         buildConfigField("String", "ALERTS_URL", "\"${localProps.getProperty("alertsUrl").orEmpty()}\"")
         // เซิร์ฟเวอร์นำทางของหน่วยงาน (OSRM หลัง Nginx) เช่น https://backup.doh.go.th/nav

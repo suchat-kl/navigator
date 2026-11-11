@@ -8,7 +8,7 @@
 |---|---|
 | บัญชี Google Play Console (บัญชีบุคคล ใช้บัญชีเดียวกับสมุดคะแนนนักเรียน) | มีแล้ว |
 | AdMob: แอป + Banner + Interstitial | สร้างแล้ว 10 พ.ย. 2569 ใส่ใน `gradle.properties` แล้ว (ดู `ตั้งค่า AdMob.md`) |
-| กุญแจ OpenRouteService ใน `local.properties` | ใส่แล้ว 11 พ.ย. 2569 (Basic Key ไม่หมดอายุ) ทดสอบค้นหา/หาเส้นทาง/นำทางบน emulator ผ่าน — เครื่อง build อื่นต้องใส่เองทุกเครื่อง (ดู `ตั้งค่า OpenRouteService.md`) |
+| กุญแจ OpenRouteService ใน `local.properties` | ตั้งแต่ 1.0.1 ไม่ใช้แล้ว (ค้นหาผ่านเครื่องกรม `navSearch=true`) build จะไม่ฝังกุญแจ ORS ลงแอป — เก็บไว้ใช้ทดสอบ/สำรองเท่านั้น |
 | เซิร์ฟเวอร์นำทางของกรม `navBaseUrl` + `navApiKey` ใน `local.properties` | ใส่แล้ว 11 พ.ย. 2569: `navBaseUrl=https://sal.doh.go.th/nav` กุญแจอยู่บนเครื่องที่ `/data/nginx/secrets/apikeys.conf` (ดู `C:\AI\kotlin\gis-navigation`) — ไม่ใส่ = รุ่นนั้นหาเส้นทางด้วย ORS และต้องใช้นโยบายฉบับเดิม |
 | หน้าเว็บนโยบายความเป็นส่วนตัว (ข้อ 3) | เผยแพร่แล้ว 10 พ.ย. 2569 |
 | ไอคอน 512×512, ภาพหน้าปก 1024×500, ภาพหน้าจอมือถือ 6 ภาพ | ทำแล้วที่ `docs/play/graphics/` (ข้อ 5) |
@@ -30,6 +30,7 @@ SHA-1 `CC:4A:EB:2C:CF:0C:77:A8:89:C6:69:F7:4B:8F:6D:D0:C4:FD:6D:8E`
 > และตรวจว่า .aab ใช้รหัสโฆษณาจริง + ชี้เซิร์ฟเวอร์กรม: ดู README หัวข้อ Build
 >
 > รุ่นแรกที่ส่ง Play (11 พ.ย. 2569): versionCode 1 / 1.0.0 — หาเส้นทางผ่าน sal.doh.go.th, ค้นหาผ่าน ORS, แผนที่ OpenFreeMap, จุดเตือนจากเซิร์ฟเวอร์กรม (สำรองในแอป)
+> รุ่น 1.0.1 (12 พ.ย. 2569): versionCode 2 — ค้นหาสถานที่ผ่าน Nominatim ของกรมด้วย (`navSearch=true`) ไม่ใช้ ORS และไม่ฝังกุญแจ ORS; นโยบายความเป็นส่วนตัวปรับปรุง 12 พ.ย. 2569
 
 1. ทดสอบรุ่น staging (ย่อโค้ดด้วย R8 เหมือน release, เซ็นด้วยกุญแจ debug, โฆษณาทดสอบ, ติดตั้งคู่กับรุ่นจริงได้เพราะ id ลงท้าย `.staging`)
    `./gradlew assembleStaging` → `app/build/outputs/apk/staging/app-staging.apk`
@@ -94,4 +95,4 @@ GitHub Pages repo `suchat-kl/suchat-kl.github.io` (ต้นฉบับใน�
 ## 6. หลังเผยแพร่
 
 - AdMob → Apps → Link กับ Google Play
-- ดูโควตา OpenRouteService ใน Dashboard ช่วงแรกทุกสัปดาห์
+- ดูการใช้ทรัพยากรเครื่อง bkdbv2 ช่วงแรก (`docker stats`, `free -m`) — แอปทุกเครื่องเรียกเครื่องกรมเครื่องเดียว
