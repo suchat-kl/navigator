@@ -58,3 +58,22 @@ class OsrmTest {
         }
     }
 }
+
+class NominatimTest {
+    @org.junit.Test fun parseSearchAndReverse() {
+        val json = """[{"place_id":1,"lat":"13.7443758","lon":"100.5439864","category":"shop","type":"mall",
+            "name":"เซ็นทรัลชิดลม",
+            "display_name":"เซ็นทรัลชิดลม, ถนนเพลินจิต, ลุมพินี, เขตปทุมวัน, กรุงเทพมหานคร, 10330, ประเทศไทย"},
+            {"place_id":2,"lat":"x","lon":"1","name":"ผิด","display_name":"ผิด"}]"""
+        val p = th.banceum.suchat.navigator.route.NominatimParser.places(json)
+        org.junit.Assert.assertEquals(1, p.size)
+        org.junit.Assert.assertEquals("เซ็นทรัลชิดลม", p[0].name)
+        org.junit.Assert.assertEquals("ถนนเพลินจิต, ลุมพินี, เขตปทุมวัน", p[0].detail)
+        org.junit.Assert.assertEquals(13.7443758, p[0].pos.lat, 1e-9)
+        org.junit.Assert.assertNull(th.banceum.suchat.navigator.route.NominatimParser.reverse("""{"error":"Unable to geocode"}"""))
+        val r = th.banceum.suchat.navigator.route.NominatimParser.reverse(
+            """{"lat":"13.7","lon":"100.5","name":"","display_name":"ซอยสมประสงค์ 5, ถนนเพชรบุรี, ราชเทวี, 10400, ประเทศไทย"}""")
+        org.junit.Assert.assertEquals("ซอยสมประสงค์ 5", r!!.name)
+        org.junit.Assert.assertEquals("ถนนเพชรบุรี, ราชเทวี", r.detail)
+    }
+}

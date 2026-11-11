@@ -54,6 +54,8 @@ android {
         // เว้นว่าง = หาเส้นทางด้วย OpenRouteService; navApiKey = กุญแจ X-Api-Key ของ Nginx (ไม่เข้า git)
         buildConfigField("String", "NAV_BASE_URL", "\"${localProps.getProperty("navBaseUrl").orEmpty()}\"")
         buildConfigField("String", "NAV_API_KEY", "\"${localProps.getProperty("navApiKey").orEmpty()}\"")
+        // navSearch=true = ค้นหาสถานที่ด้วย Nominatim บนเซิร์ฟเวอร์กรม (ไม่ตั้ง = ค้นหาด้วย OpenRouteService)
+        buildConfigField("Boolean", "NAV_SEARCH", "${localProps.getProperty("navSearch") == "true"}")
     }
 
     signingConfigs {

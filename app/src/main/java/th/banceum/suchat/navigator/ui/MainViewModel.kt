@@ -22,7 +22,7 @@ import th.banceum.suchat.navigator.geo.LatLon
 import th.banceum.suchat.navigator.nav.NavState
 import th.banceum.suchat.navigator.nav.NavTracker
 import th.banceum.suchat.navigator.nav.Voice
-import th.banceum.suchat.navigator.route.OrsClient
+import th.banceum.suchat.navigator.route.Geocoder
 import th.banceum.suchat.navigator.route.OrsException
 import th.banceum.suchat.navigator.route.Place
 import th.banceum.suchat.navigator.route.Profile
@@ -83,7 +83,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** ตำแหน่งตอนหาเส้นทางใหม่ครั้งล่าสุด กันหาซ้ำทุก 15 วินาทีขณะยังจอดอยู่นอกถนน (เปลืองโควตา ORS) */
     private var lastRerouteAt: LatLon? = null
 
-    val orsReady get() = OrsClient.configured
+    val orsReady get() = Geocoder.configured
 
     init {
         viewModelScope.launch { alertData = AlertSource.load(app) }
@@ -97,7 +97,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         searching = true
         viewModelScope.launch {
             try {
-                results = OrsClient.search(text, here)
+                results = Geocoder.search(text, here)
                 if (results.isEmpty()) message = "ไม่พบ \"$text\""
             } catch (e: OrsException) {
                 message = e.message
@@ -127,7 +127,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         select(temp)
         if (!orsReady) return
         viewModelScope.launch {
-            val named = runCatching { OrsClient.reverse(p) }.getOrNull() ?: return@launch
+            val named = runCatching { Geocoder.reverse(p) }.getOrNull() ?: return@launch
             // ผู้ใช้อาจเลือกที่อื่นไปแล้วระหว่างรอ
             if (selected == temp) selected = named.copy(pos = p)
         }
