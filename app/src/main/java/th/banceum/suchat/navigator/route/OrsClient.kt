@@ -58,6 +58,8 @@ object OrsClient {
             readTimeout = 20_000
             setRequestProperty("Authorization", key)
             setRequestProperty("Accept", "application/json, application/geo+json")
+            // ผลค้นหาสถานที่เป็นชื่อภาษาไทย (ถ้าไม่ส่ง ORS ตอบเป็นภาษาอังกฤษ)
+            setRequestProperty("Accept-Language", "th")
             if (postBody != null) {
                 requestMethod = "POST"
                 doOutput = true

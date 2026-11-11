@@ -63,6 +63,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var tracker: NavTracker? = null
     private var routeJob: Job? = null
     private var lastReroute = 0L
+    /** ตำแหน่งตอนหาเส้นทางใหม่ครั้งล่าสุด กันหาซ้ำทุก 15 วินาทีขณะยังจอดอยู่นอกถนน (เปลืองโควตา ORS) */
+    private var lastRerouteAt: LatLon? = null
 
     val orsReady get() = OrsClient.configured
 
@@ -176,6 +178,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun startNav() {
         val r = route ?: return
         tracker = NavTracker(r)
+        lastRerouteAt = null
         navigating = true
         nav = null
         speak(tracker!!.intro())
@@ -204,8 +207,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         nav = u.state
         u.speech?.let { speak(it) }
         val now = System.currentTimeMillis()
-        if (u.reroute && !routing && now - lastReroute > 15_000) {
+        val p = LatLon(loc.latitude, loc.longitude)
+        val moved = lastRerouteAt?.let { Geo.distance(it, p) > 100 } ?: true
+        if (u.reroute && !routing && now - lastReroute > 15_000 && moved) {
             lastReroute = now
+            lastRerouteAt = p
             reroute(loc)
         }
     }

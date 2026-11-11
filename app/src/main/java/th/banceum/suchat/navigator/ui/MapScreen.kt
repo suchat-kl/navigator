@@ -79,6 +79,7 @@ fun MapScreen(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
+    var centeredOnce by remember { mutableStateOf(false) }
     val longPress by rememberUpdatedState(onLongPress)
     val userMove by rememberUpdatedState(onUserMove)
 
@@ -152,6 +153,11 @@ fun MapScreen(
         val m = map ?: return@LaunchedEffect
         val loc = location ?: return@LaunchedEffect
         if (m.locationComponent.isLocationComponentActivated) m.locationComponent.forceLocationUpdate(loc)
+        // ได้ตำแหน่งครั้งแรกและยังไม่ได้เลือกจุดหมาย → เลื่อนแผนที่ไปที่ตำแหน่งปัจจุบัน
+        if (!centeredOnce && destination == null && route == null) {
+            centeredOnce = true
+            m.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 15.0), 800)
+        }
     }
 
     // โหมดกล้อง

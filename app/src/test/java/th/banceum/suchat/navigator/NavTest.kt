@@ -106,6 +106,8 @@ class NavTest {
         assertEquals("สยามพารากอน", p.name)
         assertEquals("ปทุมวัน, กรุงเทพมหานคร", p.detail)
         assertEquals(13.74, p.pos.lat, 1e-9)
+        assertEquals("ปทุมวัน", OrsParser.detailOf("เซ็นทรัลชิดลม, ปทุมวัน, BM, ประเทศไทย", "เซ็นทรัลชิดลม"))
+        assertEquals("Ban Rangsit", OrsParser.detailOf("Central, Ban Rangsit, PT, ประเทศไทย", "Central"))
         assertTrue(OrsParser.error(404, """{"error":{"code":2010,"message":"x"}}""").contains("ไม่พบถนน"))
         assertTrue(OrsParser.error(403, null).contains("กุญแจ"))
     }

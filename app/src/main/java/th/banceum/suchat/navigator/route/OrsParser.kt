@@ -51,8 +51,7 @@ object OrsParser {
             val label = p.optString("label")
             Place(
                 name = name,
-                // ตัดชื่อซ้ำหน้า label ออก เหลือแค่ตำบล/อำเภอ/จังหวัด
-                detail = label.removePrefix(name).removePrefix(",").trim(),
+                detail = detailOf(label, name),
                 pos = f.getJSONObject("geometry").getJSONArray("coordinates").toLatLon(),
             )
         }
@@ -71,6 +70,16 @@ object OrsParser {
             else -> "หาเส้นทางไม่สำเร็จ (รหัส $httpCode${code?.let { "/$it" } ?: ""})"
         }
     }
+
+    /**
+     * รายละเอียดใต้ชื่อสถานที่: ตัดชื่อซ้ำหน้า label, ชื่อประเทศ และรหัสจังหวัดย่อ 2 ตัว (เช่น BM)
+     * "เซ็นทรัลชิดลม, ปทุมวัน, BM, ประเทศไทย" → "ปทุมวัน"
+     */
+    fun detailOf(label: String, name: String): String = label.split(",")
+        .map { it.trim() }
+        .filterIndexed { i, s -> !(i == 0 && s == name) }
+        .filter { it.isNotEmpty() && it != "ประเทศไทย" && it != "Thailand" && !Regex("[A-Z]{2}").matches(it) }
+        .joinToString(", ")
 
     /** ORS เรียงพิกัดเป็น [ลองจิจูด, ละติจูด] */
     private fun JSONArray.toLatLon() = LatLon(lat = getDouble(1), lon = getDouble(0))

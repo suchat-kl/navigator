@@ -253,7 +253,7 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
             }
             val sel = vm.selected
             when {
-                vm.navigating -> NavPanel(vm, onStop = { confirmStop = true }, onFollow = { follow = true; recenter++ }, follow = follow)
+                vm.navigating -> NavPanel(vm, onStop = { if (vm.nav?.arrived == true) endNav() else confirmStop = true }, onFollow = { follow = true; recenter++ }, follow = follow)
                 sel != null -> PlacePanel(vm, sel, onStart = { vm.startNav(); follow = true })
             }
             if (!vm.navigating) BannerAd()
@@ -457,6 +457,15 @@ private fun InstructionBanner(route: Route?, st: NavState?, rerouting: Boolean) 
                     Spacer(Modifier.width(16.dp))
                     Text("ถึงจุดหมายแล้ว", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
+                // ออกนอกเส้นทาง: ระยะถึงจุดเลี้ยวไม่มีความหมาย ให้บอกให้กลับเข้าเส้นทางแทน
+                st?.offRoute == true -> {
+                    Icon(Icons.Filled.Navigation, null, Modifier.size(48.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text("ออกนอกเส้นทาง", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("กลับเข้าสู่เส้นทางสีน้ำเงินเพื่อไปต่อ", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
                 next != null -> {
                     Icon(stepIcon(next), null, Modifier.size(48.dp))
                     Spacer(Modifier.width(16.dp))
@@ -464,7 +473,6 @@ private fun InstructionBanner(route: Route?, st: NavState?, rerouting: Boolean) 
                         Text(st?.let { Geo.formatDistance(it.toNext) } ?: "", fontSize = 28.sp, fontWeight = FontWeight.Bold)
                         Text(ThaiInstructions.text(next), style = MaterialTheme.typography.titleMedium, maxLines = 2,
                             overflow = TextOverflow.Ellipsis)
-                        if (st?.offRoute == true) Text("ออกนอกเส้นทาง", style = MaterialTheme.typography.labelLarge)
                     }
                 }
                 else -> Text("กำลังหาตำแหน่ง…", style = MaterialTheme.typography.titleLarge)
