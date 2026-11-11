@@ -50,19 +50,21 @@ object NavServer {
 
     private suspend fun get(url: String, what: String): String = withContext(Dispatchers.IO) {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 20_000
+            // สั้นกว่า ORS เพื่อให้สลับไปบริการสำรองเร็วเมื่อเครื่องกรมล่ม
+            connectTimeout = 5_000
+            readTimeout = 15_000
             authorize(this)
         }
         try {
             when (val code = conn.responseCode) {
                 in 200..299 -> conn.inputStream.bufferedReader().use { it.readText() }
-                401 -> throw OrsException("กุญแจเชื่อมต่อเซิร์ฟเวอร์นำทางไม่ถูกต้อง")
-                429 -> throw OrsException("มีผู้ใช้งานพร้อมกันมาก ลองใหม่อีกครั้ง")
+                401 -> throw ServerUnavailable("กุญแจเชื่อมต่อเซิร์ฟเวอร์นำทางไม่ถูกต้อง")
+                429 -> throw ServerUnavailable("มีผู้ใช้งานพร้อมกันมาก ลองใหม่อีกครั้ง")
+                in 500..599 -> throw ServerUnavailable("เซิร์ฟเวอร์นำทางขัดข้องชั่วคราว ลองใหม่ภายหลัง")
                 else -> throw OrsException("$what ไม่สำเร็จ (รหัส $code)")
             }
         } catch (e: IOException) {
-            throw OrsException("เชื่อมต่อเซิร์ฟเวอร์นำทางไม่ได้")
+            throw ServerUnavailable("เชื่อมต่อเซิร์ฟเวอร์นำทางไม่ได้")
         } finally {
             conn.disconnect()
         }
@@ -74,8 +76,9 @@ object NavServer {
         val coords = String.format(Locale.ROOT, "%.6f,%.6f;%.6f,%.6f", from.lon, from.lat, to.lon, to.lat)
         val url = "$base/route/v1/$path/$coords?overview=false&steps=true&geometries=geojson"
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 20_000
+            // สั้นกว่า ORS เพื่อให้สลับไปบริการสำรองเร็วเมื่อเครื่องกรมล่ม
+            connectTimeout = 5_000
+            readTimeout = 15_000
             authorize(this)
         }
         try {
@@ -83,36 +86,69 @@ object NavServer {
             val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.use { it.readText() }
             when {
-                code == 401 -> throw OrsException("กุญแจเชื่อมต่อเซิร์ฟเวอร์นำทางไม่ถูกต้อง")
-                code == 429 -> throw OrsException("มีผู้ใช้งานพร้อมกันมาก ลองใหม่อีกครั้ง")
-                code >= 500 || body == null -> throw OrsException("เซิร์ฟเวอร์นำทางขัดข้องชั่วคราว ลองใหม่ภายหลัง")
+                code == 401 -> throw ServerUnavailable("กุญแจเชื่อมต่อเซิร์ฟเวอร์นำทางไม่ถูกต้อง")
+                code == 429 -> throw ServerUnavailable("มีผู้ใช้งานพร้อมกันมาก ลองใหม่อีกครั้ง")
+                code >= 500 || body == null -> throw ServerUnavailable("เซิร์ฟเวอร์นำทางขัดข้องชั่วคราว ลองใหม่ภายหลัง")
                 // OSRM ตอบ 400 พร้อม code เช่น NoSegment → OsrmParser แปลงเป็นข้อความไทย
                 else -> runCatching { OsrmParser.route(body, profile) }
                     .getOrElse { if (it is OrsException) throw it else throw OrsException("อ่านผลเส้นทางไม่ได้") }
             }
         } catch (e: IOException) {
-            throw OrsException("เชื่อมต่อเซิร์ฟเวอร์นำทางไม่ได้")
+            throw ServerUnavailable("เชื่อมต่อเซิร์ฟเวอร์นำทางไม่ได้")
         } finally {
             conn.disconnect()
         }
     }
 }
 
-/** เลือกบริการค้นหาสถานที่: Nominatim ของกรมถ้าเปิด navSearch ไม่งั้น OpenRouteService */
+/**
+ * ใช้เซิร์ฟเวอร์กรมก่อน ถ้าใช้ไม่ได้ (ServerUnavailable) สลับไป OpenRouteService ทันทีในคำขอเดียวกัน
+ * แล้วพักเซิร์ฟเวอร์กรมไว้ [cooldownMs] ก่อนลองใหม่ — เครื่องกรมกลับมาเมื่อไรแอปกลับไปใช้เอง
+ * หาเส้นทางไม่ได้จริง (เช่น ไม่มีถนนใกล้จุด) ไม่สลับ เพราะเซิร์ฟเวอร์ตอบได้ปกติ
+ */
+class Failover(private val cooldownMs: Long = 120_000, private val clock: () -> Long = System::currentTimeMillis) {
+    @Volatile private var downUntil = 0L
+
+    /** กำลังพักเซิร์ฟเวอร์กรมอยู่ (ใช้บริการสำรอง) */
+    val primaryDown get() = clock() < downUntil
+
+    suspend fun <T> run(primary: (suspend () -> T)?, backup: (suspend () -> T)?): T {
+        if (primary != null && (backup == null || !primaryDown)) {
+            try {
+                return primary().also { downUntil = 0 }
+            } catch (e: ServerUnavailable) {
+                if (backup == null) throw e
+                downUntil = clock() + cooldownMs
+            }
+        }
+        return (backup ?: throw OrsException("ยังไม่ได้ตั้งค่าบริการหาเส้นทาง/ค้นหาในแอปรุ่นนี้"))()
+    }
+}
+
+/** สถานะสลับร่วมกันของทุกบริการบนเครื่องกรม (เครื่องเดียวกัน ล่มพร้อมกัน) */
+val navFailover = Failover()
+
+/** ค้นหาสถานที่: Nominatim ของกรม (navSearch) สำรองด้วย OpenRouteService */
 object Geocoder {
     val configured get() = NavServer.searchEnabled || OrsClient.configured
 
-    suspend fun search(text: String, near: LatLon?): List<Place> =
-        if (NavServer.searchEnabled) NavServer.search(text, near) else OrsClient.search(text, near)
+    suspend fun search(text: String, near: LatLon?): List<Place> = navFailover.run(
+        if (NavServer.searchEnabled) ({ NavServer.search(text, near) }) else null,
+        if (OrsClient.configured) ({ OrsClient.search(text, near) }) else null,
+    )
 
-    suspend fun reverse(p: LatLon): Place? =
-        if (NavServer.searchEnabled) NavServer.reverse(p) else OrsClient.reverse(p)
+    suspend fun reverse(p: LatLon): Place? = navFailover.run(
+        if (NavServer.searchEnabled) ({ NavServer.reverse(p) }) else null,
+        if (OrsClient.configured) ({ OrsClient.reverse(p) }) else null,
+    )
 }
 
-/** เลือกบริการหาเส้นทาง: เซิร์ฟเวอร์หน่วยงานถ้าตั้งไว้ ไม่งั้น OpenRouteService */
+/** หาเส้นทาง: OSRM ของกรม สำรองด้วย OpenRouteService */
 object Router {
     val configured get() = NavServer.configured || OrsClient.configured
 
-    suspend fun route(from: LatLon, to: LatLon, profile: Profile): Route =
-        if (NavServer.configured) NavServer.route(from, to, profile) else OrsClient.route(from, to, profile)
+    suspend fun route(from: LatLon, to: LatLon, profile: Profile): Route = navFailover.run(
+        if (NavServer.configured) ({ NavServer.route(from, to, profile) }) else null,
+        if (OrsClient.configured) ({ OrsClient.route(from, to, profile) }) else null,
+    )
 }

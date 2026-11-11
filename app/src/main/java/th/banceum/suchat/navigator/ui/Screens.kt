@@ -132,7 +132,8 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 Text(
                     "แผนที่และจุดเตือน © ผู้ร่วมพัฒนา OpenStreetMap (ODbL) · แผนที่ฐาน OpenFreeMap / OpenMapTiles\n" +
                         when {
-                            NavServer.searchEnabled -> "หาเส้นทางและค้นหาสถานที่: เซิร์ฟเวอร์ระบบนำทางของกรมทางหลวง (OSRM, Nominatim)"
+                            NavServer.searchEnabled -> "หาเส้นทางและค้นหาสถานที่: เซิร์ฟเวอร์ระบบนำทางของกรมทางหลวง (OSRM, Nominatim) " +
+                                "สำรองด้วย openrouteservice.org by HeiGIT เมื่อเซิร์ฟเวอร์กรมใช้งานไม่ได้"
                             NavServer.configured -> "หาเส้นทาง: เซิร์ฟเวอร์ระบบนำทางของกรมทางหลวง (OSRM) · ค้นหาสถานที่ © openrouteservice.org by HeiGIT"
                             else -> "หาเส้นทางและค้นหาสถานที่ © openrouteservice.org by HeiGIT"
                         },
@@ -151,7 +152,8 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 Text(
                     "แอปไม่มีบัญชีผู้ใช้ สถานที่ที่บันทึกและการตั้งค่าอยู่ในเครื่องนี้เท่านั้น " +
                         when {
-                            NavServer.searchEnabled -> "ตำแหน่งต้นทาง/ปลายทางและคำค้นส่งไปเซิร์ฟเวอร์ระบบนำทางของกรมทางหลวงเพื่อหาเส้นทางและค้นหาสถานที่เท่านั้น"
+                            NavServer.searchEnabled -> "ตำแหน่งต้นทาง/ปลายทางและคำค้นส่งไปเซิร์ฟเวอร์ระบบนำทางของกรมทางหลวงเพื่อหาเส้นทางและค้นหาสถานที่เท่านั้น " +
+                                "(ช่วงที่เซิร์ฟเวอร์กรมใช้งานไม่ได้ ส่งไป OpenRouteService แทน)"
                             NavServer.configured -> "ตำแหน่งต้นทาง/ปลายทางส่งไปเซิร์ฟเวอร์ระบบนำทางของกรมทางหลวงเพื่อหาเส้นทาง " +
                                 "และคำค้นส่งไป OpenRouteService เพื่อค้นหาสถานที่เท่านั้น"
                             else -> "ตำแหน่งต้นทาง/ปลายทางและคำค้นจะส่งไป OpenRouteService เพื่อหาเส้นทางเท่านั้น"

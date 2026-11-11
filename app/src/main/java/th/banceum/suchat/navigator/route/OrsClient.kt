@@ -12,7 +12,10 @@ import java.net.URL
 import java.net.URLEncoder
 
 /** ข้อผิดพลาดที่แสดงให้ผู้ใช้เห็นได้ตรง ๆ */
-class OrsException(message: String) : Exception(message)
+open class OrsException(message: String) : Exception(message)
+
+/** เซิร์ฟเวอร์กรมใช้งานไม่ได้ (ต่อไม่ได้ หมดเวลา 5xx 429 กุญแจถูกปฏิเสธ) — สลับไปบริการสำรองได้ */
+class ServerUnavailable(message: String) : OrsException(message)
 
 /**
  * เรียก OpenRouteService: หาเส้นทาง (directions) และค้นหาสถานที่ (geocode)
