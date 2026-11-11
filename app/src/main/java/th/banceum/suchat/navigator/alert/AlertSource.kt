@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import th.banceum.suchat.navigator.BuildConfig
+import th.banceum.suchat.navigator.route.NavServer
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -24,7 +25,8 @@ object AlertSource {
 
     suspend fun load(context: Context): AlertData = withContext(Dispatchers.IO) {
         val cache = File(context.filesDir, CACHE)
-        val url = BuildConfig.ALERTS_URL
+        // alertsUrl ที่ตั้งเอง > ไฟล์บนเซิร์ฟเวอร์นำทางของหน่วยงาน > ไม่ดาวน์โหลด
+        val url = BuildConfig.ALERTS_URL.ifBlank { NavServer.alertsUrl.orEmpty() }
         if (url.isNotBlank()) {
             runCatching { download(url) }
                 .getOrNull()
@@ -47,6 +49,7 @@ object AlertSource {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 10_000
             readTimeout = 20_000
+            if (url == NavServer.alertsUrl) NavServer.authorize(this)
         }
         try {
             check(conn.responseCode in 200..299)

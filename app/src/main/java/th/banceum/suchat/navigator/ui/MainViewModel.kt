@@ -27,6 +27,7 @@ import th.banceum.suchat.navigator.route.OrsException
 import th.banceum.suchat.navigator.route.Place
 import th.banceum.suchat.navigator.route.Profile
 import th.banceum.suchat.navigator.route.Route
+import th.banceum.suchat.navigator.route.Router
 
 /** สถานะทั้งหมดของหน้าจอแผนที่ */
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -185,7 +186,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val p = profile
         routeJob = viewModelScope.launch {
             try {
-                route = OrsClient.route(from, dest.pos, p)
+                route = Router.route(from, dest.pos, p)
             } catch (e: OrsException) {
                 message = e.message
             } finally {
@@ -255,7 +256,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         speak("กำลังคำนวณเส้นทางใหม่")
         routeJob = viewModelScope.launch {
             try {
-                val r = OrsClient.route(LatLon(loc.latitude, loc.longitude), dest.pos, profile)
+                val r = Router.route(LatLon(loc.latitude, loc.longitude), dest.pos, profile)
                 if (!navigating) return@launch
                 route = r
                 tracker = NavTracker(r)

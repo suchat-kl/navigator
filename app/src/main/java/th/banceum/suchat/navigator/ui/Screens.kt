@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import th.banceum.suchat.navigator.BuildConfig
 import th.banceum.suchat.navigator.geo.Geo
+import th.banceum.suchat.navigator.route.NavServer
 import th.banceum.suchat.navigator.route.Place
 
 const val PRIVACY_URL = "https://suchat-kl.github.io/navigator/privacy-policy.html"
@@ -126,7 +127,8 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 Text("แหล่งข้อมูล", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "แผนที่และจุดเตือน © ผู้ร่วมพัฒนา OpenStreetMap (ODbL) · แผนที่ฐาน OpenFreeMap / OpenMapTiles\n" +
-                        "หาเส้นทางและค้นหาสถานที่ © openrouteservice.org by HeiGIT",
+                        if (NavServer.configured) "หาเส้นทาง: เซิร์ฟเวอร์ระบบนำทางของกรมทางหลวง (OSRM) · ค้นหาสถานที่ © openrouteservice.org by HeiGIT"
+                        else "หาเส้นทางและค้นหาสถานที่ © openrouteservice.org by HeiGIT",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 TextButton(onClick = { open("https://www.openstreetmap.org/copyright") }) { Text("สัญญาอนุญาต OpenStreetMap") }
@@ -141,7 +143,9 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 Text("ความเป็นส่วนตัว", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "แอปไม่มีบัญชีผู้ใช้ สถานที่ที่บันทึกและการตั้งค่าอยู่ในเครื่องนี้เท่านั้น " +
-                        "ตำแหน่งต้นทาง/ปลายทางและคำค้นจะส่งไป OpenRouteService เพื่อหาเส้นทางเท่านั้น",
+                        if (NavServer.configured) "ตำแหน่งต้นทาง/ปลายทางส่งไปเซิร์ฟเวอร์ระบบนำทางของกรมทางหลวงเพื่อหาเส้นทาง " +
+                            "และคำค้นส่งไป OpenRouteService เพื่อค้นหาสถานที่เท่านั้น"
+                        else "ตำแหน่งต้นทาง/ปลายทางและคำค้นจะส่งไป OpenRouteService เพื่อหาเส้นทางเท่านั้น",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 TextButton(onClick = { open(PRIVACY_URL) }) { Text("นโยบายความเป็นส่วนตัว") }

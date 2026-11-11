@@ -50,6 +50,10 @@ android {
         buildConfigField("String", "ORS_API_KEY", "\"$orsApiKey\"")
         // URL ไฟล์ GeoJSON จุดเตือน (ด่านชั่ง ด่านเก็บเงิน กล้อง) ของหน่วยงาน เว้นว่าง = ใช้ข้อมูล OSM ที่มากับแอป
         buildConfigField("String", "ALERTS_URL", "\"${localProps.getProperty("alertsUrl").orEmpty()}\"")
+        // เซิร์ฟเวอร์นำทางของหน่วยงาน (OSRM หลัง Nginx) เช่น https://backup.doh.go.th/nav
+        // เว้นว่าง = หาเส้นทางด้วย OpenRouteService; navApiKey = กุญแจ X-Api-Key ของ Nginx (ไม่เข้า git)
+        buildConfigField("String", "NAV_BASE_URL", "\"${localProps.getProperty("navBaseUrl").orEmpty()}\"")
+        buildConfigField("String", "NAV_API_KEY", "\"${localProps.getProperty("navApiKey").orEmpty()}\"")
     }
 
     signingConfigs {
