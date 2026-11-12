@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
@@ -82,6 +85,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -89,6 +93,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,6 +106,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import th.banceum.suchat.navigator.nav.SpeedLimit
 import th.banceum.suchat.navigator.ads.Ads
 import th.banceum.suchat.navigator.alert.AlertKind
 import th.banceum.suchat.navigator.alert.UpcomingAlert
@@ -256,7 +263,9 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
                 .onSizeChanged { bottomPx = it.height }
                 .navigationBarsPadding(),
         ) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom) {
+                if (vm.navigating) SpeedSign(vm.speedLimit, vm.speedKmh, vm.speeding) else Spacer(Modifier.size(1.dp))
                 FloatingActionButton(onClick = {
                     if (!hasPermission) {
                         permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
@@ -558,6 +567,37 @@ private fun AlertChip(a: UpcomingAlert) {
             Spacer(Modifier.width(8.dp))
             Text("$text · ${Geo.formatDistance(a.distance)}", style = MaterialTheme.typography.titleSmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** ป้ายจำกัดความเร็ว (วงกลมขอบแดงแบบป้ายจราจร) + ความเร็วปัจจุบัน (พื้นแดงเมื่อเกินกำหนด) */
+@Composable
+private fun SpeedSign(limit: SpeedLimit?, speed: Int?, over: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (limit != null) {
+            Box(
+                Modifier.size(64.dp).shadow(4.dp, CircleShape).background(Color.White, CircleShape)
+                    .border(7.dp, Color(0xFFD32F2F), CircleShape)
+                    .semantics(mergeDescendants = true) { contentDescription = "จำกัดความเร็ว ${limit.kmh} กิโลเมตรต่อชั่วโมง" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("${limit.kmh}", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            }
+        }
+        if (speed != null) {
+            Surface(
+                Modifier.padding(top = 6.dp),
+                shape = MaterialTheme.shapes.small,
+                color = if (over) Color(0xFFD32F2F) else MaterialTheme.colorScheme.surface,
+                contentColor = if (over) Color.White else MaterialTheme.colorScheme.onSurface,
+                shadowElevation = 4.dp,
+            ) {
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$speed", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("กม./ชม.", style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }

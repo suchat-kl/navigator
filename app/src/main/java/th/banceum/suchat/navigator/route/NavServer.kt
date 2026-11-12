@@ -48,6 +48,15 @@ object NavServer {
         "ระบุชื่อสถานที่",
     ))
 
+    /** โฟลเดอร์ไฟล์แผนที่/กติกาความเร็วบนเซิร์ฟเวอร์ (ไม่ต้องใช้กุญแจ) */
+    val mapBaseUrl get() = if (configured) "$base/map" else null
+
+    /** ถนนที่อยู่ ณ จุดนี้ (ผล /reverse ดิบ ระดับถนน) ใช้หาอัตราจำกัดความเร็ว — ไม่มีบริการสำรอง */
+    suspend fun roadAt(p: LatLon): String = get(
+        String.format(Locale.ROOT, "%s/reverse?format=jsonv2&addressdetails=1&zoom=17&accept-language=th&lat=%.6f&lon=%.6f", base, p.lat, p.lon),
+        "หาอัตราจำกัดความเร็ว",
+    )
+
     private suspend fun get(url: String, what: String): String = withContext(Dispatchers.IO) {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             // สั้นกว่า ORS เพื่อให้สลับไปบริการสำรองเร็วเมื่อเครื่องกรมล่ม

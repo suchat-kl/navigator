@@ -44,10 +44,35 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import th.banceum.suchat.navigator.geo.LatLon
+import th.banceum.suchat.navigator.route.NavServer
 import th.banceum.suchat.navigator.route.Route
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 
-/** แผนที่ฐาน OpenFreeMap (ข้อมูล OpenStreetMap) ไม่ต้องใช้กุญแจ */
+/** แผนที่ฐานสำรอง OpenFreeMap (ข้อมูล OpenStreetMap) ไม่ต้องใช้กุญแจ */
 const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
+
+/**
+ * เลือกแผนที่ฐาน: ไทล์บนเครื่องกรม (Martin, style ดัดแปลงจาก OpenFreeMap liberty) ถ้าเครื่องกรมตอบภายใน 3 วินาที
+ * ไม่ตอบ/ไม่ได้ตั้งเซิร์ฟเวอร์ ใช้ OpenFreeMap แทน — ตรวจครั้งเดียวตอนเปิดแผนที่
+ */
+object MapStyle {
+    suspend fun pick(): String = withContext(Dispatchers.IO) {
+        val base = NavServer.mapBaseUrl ?: return@withContext MAP_STYLE
+        val style = "$base/style.json"
+        val ok = runCatching {
+            val conn = (URL(style).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 3_000
+                readTimeout = 3_000
+                requestMethod = "HEAD"
+            }
+            try { conn.responseCode in 200..299 } finally { conn.disconnect() }
+        }.getOrDefault(false)
+        if (ok) style else MAP_STYLE
+    }
+}
 
 private const val SRC_ROUTE = "route"
 private const val SRC_DEST = "dest"
@@ -111,6 +136,7 @@ fun MapScreen(
     }
 
     LaunchedEffect(Unit) {
+        val styleUrl = MapStyle.pick()
         mapView.getMapAsync { m ->
             m.cameraPosition = CameraPosition.Builder()
                 .target(LatLng(initialCenter.lat, initialCenter.lon)).zoom(12.0).build()
@@ -126,12 +152,21 @@ fun MapScreen(
             m.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) userMove()
             }
-            m.setStyle(Style.Builder().fromUri(MAP_STYLE)) { s ->
+            val onStyle = Style.OnStyleLoaded { s ->
                 thaiLabels(s)
                 addRouteLayers(s)
                 map = m
                 style = s
             }
+            // style ของเครื่องกรมโหลดไม่ขึ้น → สลับไป OpenFreeMap ครั้งเดียว
+            var fellBack = styleUrl == MAP_STYLE
+            mapView.addOnDidFailLoadingMapListener {
+                if (!fellBack) {
+                    fellBack = true
+                    m.setStyle(Style.Builder().fromUri(MAP_STYLE), onStyle)
+                }
+            }
+            m.setStyle(Style.Builder().fromUri(styleUrl), onStyle)
         }
     }
 

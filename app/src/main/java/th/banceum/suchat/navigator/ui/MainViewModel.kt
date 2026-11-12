@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.roundToInt
 import th.banceum.suchat.navigator.alert.AlertData
 import th.banceum.suchat.navigator.alert.AlertSource
 import th.banceum.suchat.navigator.alert.AlertTracker
@@ -21,8 +22,15 @@ import th.banceum.suchat.navigator.geo.Geo
 import th.banceum.suchat.navigator.geo.LatLon
 import th.banceum.suchat.navigator.nav.NavState
 import th.banceum.suchat.navigator.nav.NavTracker
+import th.banceum.suchat.navigator.nav.SpeedData
+import th.banceum.suchat.navigator.nav.SpeedLimit
+import th.banceum.suchat.navigator.nav.SpeedLimitResolver
+import th.banceum.suchat.navigator.nav.SpeedMonitor
+import th.banceum.suchat.navigator.nav.SpeedSource
 import th.banceum.suchat.navigator.nav.Voice
 import th.banceum.suchat.navigator.route.Geocoder
+import th.banceum.suchat.navigator.route.NavServer
+import th.banceum.suchat.navigator.route.navFailover
 import th.banceum.suchat.navigator.route.OrsException
 import th.banceum.suchat.navigator.route.Place
 import th.banceum.suchat.navigator.route.Profile
@@ -74,6 +82,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private var alertTracker: AlertTracker? = null
 
+    /** เตือนความเร็ว: กติกาตามพื้นที่ + ป้ายรายถนน (โหลดตอนเปิดแอป) */
+    private var speedData: SpeedData? = null
+    var speedOn by mutableStateOf(prefs.speedWarn)
+        private set
+    /** อัตราจำกัดของถนนที่อยู่ตอนนี้ (null = ไม่ทราบ ไม่แสดงป้าย) */
+    var speedLimit by mutableStateOf<SpeedLimit?>(null)
+        private set
+    /** ความเร็วจาก GPS (กม./ชม.) */
+    var speedKmh by mutableStateOf<Int?>(null)
+        private set
+    var speeding by mutableStateOf(false)
+        private set
+    private val speedMonitor = SpeedMonitor()
+    private var limitJob: Job? = null
+    /** จุด/เวลาที่ถามอัตราจำกัดครั้งล่าสุด และจุดที่ได้ค่ามาล่าสุด */
+    private var limitAskedAt: LatLon? = null
+    private var limitAskedTime = 0L
+    private var limitKnownAt: LatLon? = null
+
+    /** เครื่องนี้เตือนความเร็วได้ไหม (ต้องใช้ Nominatim ของกรมหาว่าอยู่บนถนนเส้นไหน) */
+    val speedSupported get() = NavServer.searchEnabled
+
     /** ข้อความแจ้งผู้ใช้ครั้งเดียว (แสดงเป็น Snackbar แล้วล้าง) */
     var message by mutableStateOf<String?>(null)
 
@@ -87,6 +117,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { alertData = AlertSource.load(app) }
+        if (speedSupported) viewModelScope.launch { speedData = SpeedSource.load(app) }
     }
 
     // ---------- ค้นหา ----------
@@ -161,6 +192,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         saved = emptyList()
         voiceOn = prefs.voice
         alertsOn = prefs.alerts
+        speedOn = prefs.speedWarn
         profile = prefs.profile
         message = "ล้างข้อมูลในเครื่องแล้ว"
     }
@@ -214,6 +246,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         tracker = null
         alertTracker = null
         nextAlert = null
+        clearSpeed()
         voice.stop()
     }
 
@@ -241,6 +274,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         val now = System.currentTimeMillis()
         val p = LatLon(loc.latitude, loc.longitude)
+        updateSpeed(loc, p, now)
         val moved = lastRerouteAt?.let { Geo.distance(it, p) > 100 } ?: true
         if (u.reroute && !routing && now - lastReroute > 15_000 && moved) {
             lastReroute = now
@@ -275,6 +309,54 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val r = route
         alertTracker = if (navigating && r != null) newAlertTracker(r) else null
         if (!alertsOn) nextAlert = null
+    }
+
+    fun toggleSpeedWarn() {
+        speedOn = !speedOn
+        prefs.speedWarn = speedOn
+        if (!speedOn) clearSpeed()
+    }
+
+    /**
+     * เตือนความเร็วเกิน (รถยนต์ ระหว่างนำทาง): ถามเซิร์ฟเวอร์กรมว่าอยู่บนถนนอะไร ทุก 250 ม. หรือทุก 30 วินาที
+     * แล้วหาอัตราจำกัด (ป้ายใน OSM > ทางหลวงพิเศษ > เขตเมือง/เทศบาล > นอกเขตเมือง)
+     * ถามไม่ได้ใช้ค่าเดิมต่อจนห่างจุดที่รู้ค่าเกิน 1 กม. แล้วซ่อนป้าย
+     */
+    private fun updateSpeed(loc: Location, p: LatLon, now: Long) {
+        val data = speedData
+        if (!navigating || !speedOn || profile != Profile.CAR || data == null || !speedSupported) {
+            clearSpeed()
+            return
+        }
+        val dist = limitAskedAt?.let { Geo.distance(it, p) } ?: Double.MAX_VALUE
+        if (limitJob?.isActive != true && !navFailover.primaryDown &&
+            (dist > 250 || (now - limitAskedTime > 30_000 && dist > 30))
+        ) {
+            limitAskedAt = p
+            limitAskedTime = now
+            limitJob = viewModelScope.launch {
+                runCatching { SpeedLimitResolver.resolve(NavServer.roadAt(p), data.rules, data::sign) }
+                    .onSuccess { if (navigating) { speedLimit = it; limitKnownAt = p } }
+            }
+        }
+        if (limitKnownAt?.let { Geo.distance(it, p) > 1000 } == true) {
+            speedLimit = null
+            limitKnownAt = null
+        }
+        val v = if (loc.hasSpeed()) (loc.speed * 3.6).roundToInt() else null
+        speedKmh = v
+        val warn = speedMonitor.update(v?.toDouble() ?: 0.0, speedLimit, data.rules.tolerance, now)
+        speeding = v != null && speedMonitor.over
+        warn?.let { speak(it, queue = true) }
+    }
+
+    private fun clearSpeed() {
+        limitJob?.cancel()
+        speedLimit = null
+        speedKmh = null
+        speeding = false
+        limitAskedAt = null
+        limitKnownAt = null
     }
 
     private fun newAlertTracker(r: Route): AlertTracker? {

@@ -114,6 +114,20 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                 }
                 HorizontalDivider()
 
+                if (vm.speedSupported) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("เตือนความเร็วเกินกำหนด", style = MaterialTheme.typography.titleMedium)
+                            Text("โหมดรถยนต์ระหว่างนำทาง ใช้ป้ายจำกัดความเร็วใน OpenStreetMap ถ้ามี " +
+                                "ไม่มีใช้อัตราตามกฎหมาย: ในกรุงเทพฯ เมืองพัทยา เขตเทศบาล / นอกเขตเมือง / ทางหลวงพิเศษ " +
+                                "ใช้ประกอบเท่านั้น ให้ยึดป้ายจราจรจริงเสมอ",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = vm.speedOn, onCheckedChange = { vm.toggleSpeedWarn() })
+                    }
+                    HorizontalDivider()
+                }
+
                 Text("ข้อตกลงการใช้งาน", style = MaterialTheme.typography.titleMedium)
                 Text(DISCLAIMER, style = MaterialTheme.typography.bodyMedium)
                 HorizontalDivider()
@@ -130,7 +144,9 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
 
                 Text("แหล่งข้อมูล", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "แผนที่และจุดเตือน © ผู้ร่วมพัฒนา OpenStreetMap (ODbL) · แผนที่ฐาน OpenFreeMap / OpenMapTiles\n" +
+                    "แผนที่ จุดเตือน และป้ายจำกัดความเร็ว © ผู้ร่วมพัฒนา OpenStreetMap (ODbL) · " +
+                        (if (NavServer.configured) "แผนที่ฐานจากเซิร์ฟเวอร์กรมทางหลวง (OpenMapTiles รูปแบบจาก OpenFreeMap) สำรองด้วย OpenFreeMap\n"
+                        else "แผนที่ฐาน OpenFreeMap / OpenMapTiles\n") +
                         when {
                             NavServer.searchEnabled -> "หาเส้นทางและค้นหาสถานที่: เซิร์ฟเวอร์ระบบนำทางของกรมทางหลวง (OSRM, Nominatim) " +
                                 "สำรองด้วย openrouteservice.org by HeiGIT เมื่อเซิร์ฟเวอร์กรมใช้งานไม่ได้"
@@ -153,7 +169,8 @@ fun AboutScreen(vm: MainViewModel, onBack: () -> Unit) {
                     "แอปไม่มีบัญชีผู้ใช้ สถานที่ที่บันทึกและการตั้งค่าอยู่ในเครื่องนี้เท่านั้น " +
                         when {
                             NavServer.searchEnabled -> "ตำแหน่งต้นทาง/ปลายทางและคำค้นส่งไปเซิร์ฟเวอร์ระบบนำทางของกรมทางหลวงเพื่อหาเส้นทางและค้นหาสถานที่เท่านั้น " +
-                                "(ช่วงที่เซิร์ฟเวอร์กรมใช้งานไม่ได้ ส่งไป OpenRouteService แทน)"
+                                "(ช่วงที่เซิร์ฟเวอร์กรมใช้งานไม่ได้ ส่งไป OpenRouteService แทน) " +
+                                "เมื่อเปิดเตือนความเร็ว ระหว่างนำทางด้วยรถยนต์จะส่งพิกัดปัจจุบันไปเซิร์ฟเวอร์กรมทุกราว 250 เมตร เพื่อหาอัตราจำกัดความเร็วของถนน"
                             NavServer.configured -> "ตำแหน่งต้นทาง/ปลายทางส่งไปเซิร์ฟเวอร์ระบบนำทางของกรมทางหลวงเพื่อหาเส้นทาง " +
                                 "และคำค้นส่งไป OpenRouteService เพื่อค้นหาสถานที่เท่านั้น"
                             else -> "ตำแหน่งต้นทาง/ปลายทางและคำค้นจะส่งไป OpenRouteService เพื่อหาเส้นทางเท่านั้น"

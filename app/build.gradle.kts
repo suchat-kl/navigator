@@ -40,8 +40,8 @@ android {
         applicationId = "th.banceum.suchat.navigator"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["admobAppId"] = testAdmob.getValue("app")

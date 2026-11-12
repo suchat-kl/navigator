@@ -28,6 +28,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("alerts", true)
         set(v) = sp.edit().putBoolean("alerts", v).apply()
 
+    /** เตือนเมื่อขับเร็วเกินอัตราที่กฎหมายกำหนดตามพื้นที่ (โหมดรถยนต์ ระหว่างนำทาง) */
+    var speedWarn: Boolean
+        get() = sp.getBoolean("speed_warn", true)
+        set(v) = sp.edit().putBoolean("speed_warn", v).apply()
+
     var profile: Profile
         get() = runCatching { Profile.valueOf(sp.getString("profile", null) ?: "") }.getOrDefault(Profile.CAR)
         set(v) = sp.edit().putString("profile", v.name).apply()
