@@ -47,6 +47,19 @@ class SpeedTest {
     }
 
     @Test
+    fun tambonInCityKeyIsRural() {
+        // ตัวอย่างจริง: ถนนมิตรภาพช่วงสีคิ้ว-สูงเนิน Nominatim ใส่ชื่อตำบลในช่อง city
+        val l = SpeedLimitResolver.resolve(road("trunk", """"road":"ถนนมิตรภาพ","city":"ตำบลมะเกลือใหม่","county":"อำเภอสูงเนิน""""), rules, noSigns)
+        assertEquals(90, l!!.kmh)
+        // เทศบาลตำบลยังนับเป็นเขตเมือง
+        val tessaban = SpeedLimitResolver.resolve(road("trunk", """"city":"เทศบาลตำบลสูงเนิน""""), rules, noSigns)
+        assertEquals(80, tessaban!!.kmh)
+        // town ที่เป็นชื่อเมืองยังเป็นเขตเมือง แม้ city จะเป็นชื่อตำบล
+        val town = SpeedLimitResolver.resolve(road("trunk", """"town":"สูงเนิน","city":"ตำบลสูงเนิน""""), rules, noSigns)
+        assertEquals(80, town!!.kmh)
+    }
+
+    @Test
     fun ruralRoad() {
         val l = SpeedLimitResolver.resolve(road("trunk", """"county":"อำเภอด่านขุนทด","province":"จังหวัดนครราชสีมา""""), rules, noSigns)
         assertEquals(90, l!!.kmh)
@@ -82,6 +95,7 @@ class SpeedTest {
     @Test
     fun rulesFromServerOverrideDefaults() {
         val r = SpeedRules.parse("""{"rural":100,"motorway":110,"urbanPrefixes":["เทศบาล","อบต."]}""")
+        assertEquals(listOf("ตำบล"), r.notUrbanPrefixes)   // ไฟล์บนเซิร์ฟเวอร์รุ่นเก่าไม่มีช่องนี้ = ค่าตั้งต้น
         assertEquals(100, r.rural)
         assertEquals(80, r.urban)          // ไม่ได้ระบุ = ค่าตั้งต้น
         assertEquals(110, r.motorway)

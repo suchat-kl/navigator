@@ -7,5 +7,6 @@
   "urbanNames": ["กรุงเทพมหานคร", "เมืองพัทยา"],
   "urbanPrefixes": ["เทศบาล"],
   "urbanPlaceKeys": ["city", "town"],
+  "notUrbanPrefixes": ["ตำบล"],
   "tolerance": 5
 }

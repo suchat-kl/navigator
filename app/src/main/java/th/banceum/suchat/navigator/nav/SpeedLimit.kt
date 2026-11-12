@@ -22,6 +22,11 @@ data class SpeedRules(
      * ขอบเขตเทศบาลใน OSM ไม่ครบ หลายแห่งมีแค่ชื่อเมือง เช่น town = "แก่งคอย" (เทศบาลเมืองแก่งคอย)
      */
     val urbanPlaceKeys: List<String> = listOf("city", "town"),
+    /**
+     * ค่าใน [urbanPlaceKeys] ที่ขึ้นต้นด้วยคำเหล่านี้ไม่นับเป็นเมือง — Nominatim ใส่ชื่อตำบลไว้ในช่อง city บ่อย
+     * เช่น ถนนมิตรภาพช่วงสีคิ้ว-สูงเนิน city = "ตำบลมะเกลือใหม่" ซึ่งเป็นนอกเขตเมือง (เทศบาลตำบลจะขึ้นต้นว่า "เทศบาล")
+     */
+    val notUrbanPrefixes: List<String> = listOf("ตำบล"),
     /** เกินได้กี่ กม./ชม. ก่อนเตือน (ความคลาดเคลื่อนของ GPS) */
     val tolerance: Int = 5,
 ) {
@@ -37,6 +42,7 @@ data class SpeedRules(
                 urbanNames = list("urbanNames", d.urbanNames),
                 urbanPrefixes = list("urbanPrefixes", d.urbanPrefixes),
                 urbanPlaceKeys = list("urbanPlaceKeys", d.urbanPlaceKeys),
+                notUrbanPrefixes = list("notUrbanPrefixes", d.notUrbanPrefixes),
                 tolerance = o.optInt("tolerance", d.tolerance),
             )
         }
@@ -52,7 +58,7 @@ object SpeedLimitResolver {
      * ([signs] = osm_id ของถนน → กม./ชม. จาก maxspeed.json — Nominatim ไม่เก็บแท็ก maxspeed ไว้เอง)
      * 1. ถนนเส้นนั้นมีป้ายจำกัดความเร็วใน OSM ใช้ก่อนเสมอ
      * 2. ทางหลวงพิเศษ (motorway) → rules.motorway
-     * 3. ในกรุงเทพฯ / เมืองพัทยา / เขตเทศบาล / ในเมือง (city, town) → rules.urban
+     * 3. ในกรุงเทพฯ / เมืองพัทยา / เขตเทศบาล / ในเมือง (city, town ที่ไม่ใช่ชื่อตำบล) → rules.urban
      * 4. นอกนั้น → rules.rural
      * จุดที่ไม่ใช่ถนน → null ไม่เตือน
      */
@@ -67,7 +73,10 @@ object SpeedLimitResolver {
         if (type == "motorway" || type == "motorway_link") return SpeedLimit(rules.motorway, false, "ทางหลวงพิเศษ")
         val address = o.optJSONObject("address")
         val areas = AREA_KEYS.mapNotNull { k -> address?.optString(k)?.takeIf { it.isNotBlank() } }
-        val urban = rules.urbanPlaceKeys.any { !address?.optString(it).isNullOrBlank() } ||
+        val urban = rules.urbanPlaceKeys.any { k ->
+            val v = address?.optString(k).orEmpty()
+            v.isNotBlank() && rules.notUrbanPrefixes.none { v.startsWith(it) }
+        } ||
             areas.any { a -> a in rules.urbanNames || rules.urbanPrefixes.any { a.startsWith(it) } }
         return if (urban) SpeedLimit(rules.urban, false, "เขตเมือง/เทศบาล") else SpeedLimit(rules.rural, false, "นอกเขตเมือง")
     }
